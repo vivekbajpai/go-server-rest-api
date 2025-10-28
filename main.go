@@ -36,15 +36,39 @@ func main() {
 	mux.HandleFunc("/upload-file", uploadFileHandler)
 	mux.HandleFunc("/save-json", saveJSONHandler)
 
+	// wrap mux with simple logging middleware to watch request status
+	handler := loggingMiddleware(mux)
+
 	addr := ":8080"
 	if a := os.Getenv("PORT"); a != "" {
 		addr = ":" + a
 	}
 
 	log.Printf("starting server on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
+}
+
+// loggingResponseWriter wraps http.ResponseWriter to capture status code
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (l *loggingResponseWriter) WriteHeader(code int) {
+	l.status = code
+	l.ResponseWriter.WriteHeader(code)
+}
+
+// loggingMiddleware logs incoming requests and response status codes
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lrw := &loggingResponseWriter{ResponseWriter: w, status: 200}
+		log.Printf("%s %s started", r.Method, r.URL.Path)
+		next.ServeHTTP(lrw, r)
+		log.Printf("%s %s completed with %d", r.Method, r.URL.Path, lrw.status)
+	})
 }
 
 // uploadFileHandler accepts multipart/form-data with field "file" and optional "objectName"
