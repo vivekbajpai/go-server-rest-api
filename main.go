@@ -35,6 +35,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/upload-file", uploadFileHandler)
 	mux.HandleFunc("/save-json", saveJSONHandler)
+	mux.HandleFunc("/", welcomeHandler)
 
 	// wrap mux with simple logging middleware to watch request status
 	handler := loggingMiddleware(mux)
@@ -69,6 +70,10 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(lrw, r)
 		log.Printf("%s %s completed with %d", r.Method, r.URL.Path, lrw.status)
 	})
+}
+
+func welcomeHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Welcome to the Go Server REST API!\n")
 }
 
 // uploadFileHandler accepts multipart/form-data with field "file" and optional "objectName"
